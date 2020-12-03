@@ -62,11 +62,11 @@ class FocalLoss(nn.Module):
         return loss
 
 class FocalLoss2(nn.Module):
-    def __init__(self, alpha=0.25, gamma=2, logits=False, size_average=True):
+    def __init__(self, alpha=0.25, gamma=2, use_logits=False, size_average=True):
         super(FocalLoss2, self).__init__()
         self.alpha = alpha
         self.gamma = gamma
-        self.logits = logits
+        self.logits = use_logits
         self.reduce = size_average
 
     def forward(self, inputs, targets):

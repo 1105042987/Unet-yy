@@ -45,7 +45,8 @@
         "test": {
             "direction": ["%DATA%","ISBI-2012-EM","new_test_set"],
             "shuffle":false,
-            "batch_size": 1
+            "repeat_time":1,
+            "batch_size": 8
         }
     }
 }

@@ -28,7 +28,7 @@ class Dataset(torch.utils.data.Dataset):
         targets=cv2.imread(PJ(self.labdir,self.namelist[idx]),0)
         crop=self.transforms(np.concatenate((inputs[...,np.newaxis],targets[...,np.newaxis]),axis=-1))
         inputs=crop[0:1]
-        targets=(crop[1:2]>self.th).float()
+        targets=(crop[1:2]<=self.th).float()
         return inputs,targets
 
     def __len__(self):
@@ -54,19 +54,24 @@ def dataloader(cfg, mode):
     return loader
 
 if __name__ == "__main__":
+    mode = 'test'
+    direction={
+        'test':PJ("D:\\Data","ISBI-2012-EM","new_test_set"),
+        "train": PJ("D:\\Data","ISBI-2012-EM","new train set")
+    }
     cfg= {
         "file_name": "ISBI",
         "num_workers": 1,
         "th":0.6,
         'repeat_time':10,
         "batch_size": 1,
-        "direction": PJ("D:\\Data","ISBI-2012-EM","new train set"),
         "shuffle":True,
+        'direction':direction[mode]
     }
-    d=iter(dataloader(cfg,'train'))
+    d=iter(dataloader(cfg,mode))
     for i in range(10):
         i,t=next(d)
         cv2.imshow('1',np.array(i[0,0]))
         cv2.waitKey(0)
     print(i.shape,t.shape)
-    print(t)
+    # print(t)

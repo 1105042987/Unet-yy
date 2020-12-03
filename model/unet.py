@@ -11,6 +11,7 @@ import torch.nn.functional as F
 from torch.autograd import Function
 from docker.abstract_model import weak_evaluate, weak_loss
 from model.unet_parts import *
+from utils.loss.focal_loss import FocalLoss2
 
 class UNet(nn.Module):
     def __init__(self, n_channels, n_classes, bilinear=True):
@@ -47,10 +48,10 @@ class UNet(nn.Module):
 class loss(weak_loss):
     def __init__(self):
         super(loss, self).__init__()
-        self.loss=nn.BCEWithLogitsLoss()
+        self.loss=FocalLoss2(use_logits=True)
     def get_loss(self, pre, tar):
         l=self.loss(pre,tar)
-        return l, {'BCE':l}
+        return l, {'focol':l}
 
 class evaluate(weak_evaluate):
     def __init__(self,ori):
