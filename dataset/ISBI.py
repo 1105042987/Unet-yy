@@ -13,10 +13,10 @@ from docker.abstract_model import weak_SplitPatch
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, cfg, mode, transforms=None):
         super(Dataset, self).__init__()
-        self.imgdir=PJ(cfg['direction'],'{}_img'.format(mode))
-        self.labdir=PJ(cfg['direction'],'{}_label'.format(mode))
+        subname='train' if 'train' in cfg['direction'] else 'test'
+        self.imgdir=PJ(cfg['direction'],'{}_img'.format(subname))
+        self.labdir=PJ(cfg['direction'],'{}_label'.format(subname))
         self.namelist = os.listdir(self.imgdir)
-        self.train=mode=='train'
         self.th=cfg['th']
         self.transforms = transforms
         self.size=len(self.namelist)
@@ -39,7 +39,6 @@ def dataloader(cfg, mode):
     if mode=='train':
         transforms = T.Compose([
             T.ToPILImage(),
-            # T.RandomResizedCrop(512,scale=(0.7,1)),
             T.RandomHorizontalFlip(0.5),
             T.RandomVerticalFlip(0.5),
             T.ToTensor(),
@@ -69,9 +68,9 @@ if __name__ == "__main__":
         'direction':direction[mode]
     }
     d=iter(dataloader(cfg,mode))
-    for i in range(10):
+    for kkk in range(10):
         i,t=next(d)
-        cv2.imshow('1',np.array(i[0,0]))
-        cv2.waitKey(0)
+        print(t.sum()/512/512)
+    #     cv2.imshow('1',np.array(i[0,0]))
+    #     cv2.waitKey(0)
     print(i.shape,t.shape)
-    # print(t)

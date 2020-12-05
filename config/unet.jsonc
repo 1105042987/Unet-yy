@@ -9,7 +9,8 @@
             "n_classes":1
         },
         "loss_param":{
-            
+            "alpha":0.25,
+            "gamma":2
         },
         "evaluate_param":{
             "ori":512
@@ -25,10 +26,10 @@
         "milestones": [30,70],
 
         "test_on_train": true,
-        "eval_on_train": false,
+        "eval_on_train": true,
         "max_epoch": 100,
         "max_batch": null,
-        "save_epoch": 0
+        "save_epoch": 5
     },
     "dataset": {
         "file_name": "ISBI",
@@ -38,7 +39,7 @@
             "direction": ["%DATA%","ISBI-2012-EM","new train set"],
             "shuffle":true,
             "repeat_time":20,
-            "batch_size": 2
+            "batch_size": 4
         },
         "test": {
             "direction": ["%DATA%","ISBI-2012-EM","new_test_set"],

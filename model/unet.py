@@ -46,9 +46,10 @@ class UNet(nn.Module):
         return logits
 
 class loss(weak_loss):
-    def __init__(self):
+    def __init__(self,alpha,gamma):
         super(loss, self).__init__()
-        self.loss=FocalLoss2(use_logits=True)
+        self.loss=FocalLoss2(alpha=alpha,gamma=gamma,use_logits=True)
+        # self.loss=nn.BCEWithLogitsLoss()
     def get_loss(self, pre, tar):
         l=self.loss(pre,tar)
         return l, {'focol':l}
@@ -57,44 +58,29 @@ class evaluate(weak_evaluate):
     def __init__(self,ori):
         super(evaluate, self).__init__()
         self.cnt=0
-        # self.ori=ori
-        # self.subcnt=0
-        # self.posx=0
-        # self.posy=0
-        # self.IMG=np.zeros((ori,ori))
-        # self.LAB=np.zeros((ori,ori))
+        self.act = nn.Sigmoid()
 
     def get_eval(self, inputs, preds, targets):
-        return {}
+        iou=[]
+        for i in range(inputs.shape[0]):
+            p=(self.act(preds[i,0])>0.5).float()
+            u=(targets+p)>=1
+            i=targets*p
+            iou.append(i.sum()/u.sum())
+        return {'iou':np.array(iou)}
 
     def visualize(self, inputs, preds, targets, _eval):
-        return None
+        for i in range(inputs.shape[0]):
+            cv2.imshow('t',torch.cat([inputs[i,0],(self.act(preds[i,0])>0.5).float(),targets[i,0]],-1).cpu().detach().numpy())
+            k=cv2.waitKey(0)
+            if k=='q':break
+        return k
 
     def save(self, inputs, preds, targets, _eval):
-        self.cnt+=1
-        cv2.imwrite(os.path.join(self.result_dir,'{}_pre.png'.format(self.cnt)),np.array(preds[0,0,...].cpu()*255))
-        cv2.imwrite(os.path.join(self.result_dir,'{}_tar.png'.format(self.cnt)),np.array(targets[0,0,...].cpu()*255))
-
-        # shape=preds.shape[-1]
-        # subNum=(self.ori/shape)**2
-        # if self.subcnt<subNum:
-        #     self.IMG[self.posy:(self.posy+shape),self.posx:(self.posx+shape)]=np.array(preds[0,0,...].cpu()*255)
-        #     self.LAB[self.posy:(self.posy+shape),self.posx:(self.posx+shape)]=np.array(targets[0,0,...].cpu()*255)
-        #     self.subcnt+=1
-        #     if self.posx+shape<self.ori:
-        #         self.posx+=shape
-        #     else:
-        #         self.posx=0
-        #         self.posy+=shape
-        # else:
-        #     cv2.imwrite(os.path.join(self.result_dir,'{}_pre.png'.format(self.cnt)),self.IMG)
-        #     cv2.imwrite(os.path.join(self.result_dir,'{}_tar.png'.format(self.cnt)),self.LAB)
-        #     self.cnt+=1
-        #     self.subcnt=0
-        #     self.posx=0
-        #     self.posy=0
-        #     self.IMG=np.zeros((self.ori,self.ori))
-        #     self.LAB=np.zeros((self.ori,self.ori))
+        for i in range(inputs.shape[0]):
+            self.cnt+=1
+            im=(torch.cat([inputs[i,0],(self.act(preds[i,0])>0.5).float(),targets[i,0]],-1).cpu().detach().numpy()*255).astype(np.uint8)
+            cv2.imwrite(os.path.join(self.result_dir,'{}.png'.format(self.cnt)),im)
 
         
 

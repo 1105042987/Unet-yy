@@ -15,5 +15,4 @@ if __name__ == "__main__":
     cfg = Configuration(args,'test')
     doc = Docker(cfg)
     mean = doc.test(visualize=cfg.visual,save_result=cfg.save)
-    print('qwk: ',doc.evaluate.final())
 

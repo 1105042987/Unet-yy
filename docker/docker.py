@@ -97,7 +97,7 @@ class Docker(object):
             self.__save_param(best_save, self.best)
         if self.epoch != self.epoch_end-1:
             if self.save_epoch == 0: return                  # Just save the best
-            if self.epoch % self.save_epoch != 0: return     # Save every save epoch
+            if self.epoch % self.save_epoch != 0: return     # Save every save_epoch
         now_save = PJOIN(self.result_dir,'ckp',str(self.epoch))
         os.makedirs(now_save)
         self.__save_param(now_save, loss_now)

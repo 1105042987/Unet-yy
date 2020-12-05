@@ -13,8 +13,9 @@ from docker.abstract_model import weak_SplitPatch
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, cfg, mode, transforms=None):
         super(Dataset, self).__init__()
-        self.imgdir=PJ(cfg['direction'],'{}_img'.format(mode))
-        self.labdir=PJ(cfg['direction'],'{}_label'.format(mode))
+        subname='train' if 'train' in cfg['direction'] else 'test'
+        self.imgdir=PJ(cfg['direction'],'{}_img'.format(subname))
+        self.labdir=PJ(cfg['direction'],'{}_label'.format(subname))
         self.namelist = os.listdir(self.imgdir)
         self.train=mode=='train'
         self.transforms = transforms
@@ -25,17 +26,18 @@ class Dataset(torch.utils.data.Dataset):
         self.cell=cfg['cell']
 
     def __getitem__(self,idx):
+        idx=idx%self.size
         inputs=cv2.imread(PJ(self.imgdir,self.namelist[idx]),0)
         targets=cv2.imread(PJ(self.labdir,self.namelist[idx]),0)
         if self.train:
             crop=self.transforms(np.concatenate((inputs[...,np.newaxis],targets[...,np.newaxis]),axis=-1))
             inputs=crop[0:1].unsqueeze(0)
-            targets=(crop[1:2]>self.th).float().unsqueeze(0)
+            targets=(crop[1:2]<=self.th).float().unsqueeze(0)
         else:
             h,w=inputs.shape
             H,W=h//self.cell,w//self.cell
             inputs=self.transforms(inputs)
-            targets=(self.transforms(targets)>self.th).float()
+            targets=(self.transforms(targets)<=self.th).float()
             inputs=inputs.reshape(H,self.cell,W,self.cell).permute(0,2,1,3).reshape(H*W,self.cell,self.cell).unsqueeze(1)
             targets=targets.reshape(H,self.cell,W,self.cell).permute(0,2,1,3).reshape(H*W,self.cell,self.cell).unsqueeze(1)
         return inputs,targets
@@ -47,14 +49,14 @@ class Dataset(torch.utils.data.Dataset):
 def my_collate(batch):
     data = torch.cat([item[0] for item in batch],0)
     target = torch.cat([item[1] for item in batch],0)
-    return [data, target]
+    return (data, target)
 
 def dataloader(cfg, mode):
     if mode=='train':
         bs=cfg['batch_size']
         transforms = T.Compose([
             T.ToPILImage(),
-            T.RandomResizedCrop(cfg['cell'],scale=(0.5,2)),
+            T.RandomResizedCrop(cfg['cell'],scale=(0.2,1.0)),
             T.RandomHorizontalFlip(0.5),
             T.RandomVerticalFlip(0.5),
             T.ToTensor(),
@@ -90,6 +92,6 @@ if __name__ == "__main__":
     d=iter(dataloader(cfg,mode))
     i,t=next(d)
     for kkk in range(cfg['batch_size']):
-        cv2.imshow('1',np.array(t[kkk,0]))
+        cv2.imshow('1',np.array(torch.cat([i[kkk,0],t[kkk,0]],-1)))
         cv2.waitKey(0)
     print(i.shape,t.shape)
