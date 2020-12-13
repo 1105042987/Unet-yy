@@ -1,6 +1,6 @@
 {
     "system": {
-        "net": ["unet","UNet"],
+        "net": ["unet_db","db_enco"],
         "remark": "",
         "time": null,
         "gpu": [0],
@@ -10,12 +10,10 @@
             "bilinear":false
         },
         "loss_param":{
-            "alpha":0.25,
-            "gamma":2,
-            "focal":false
+            "wr": 1,
+            "wm": 1
         },
         "evaluate_param":{
-            "ori":512
         }
     },
     "optimizer":{
@@ -34,7 +32,7 @@
         "save_epoch": 5
     },
     "dataset": {
-        "file_name": "ISBI",
+        "file_name": "ISBI_db",
         "num_workers": 2,
         "th":0.6,
         "train":{

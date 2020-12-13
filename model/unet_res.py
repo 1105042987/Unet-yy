@@ -13,6 +13,33 @@ from docker.abstract_model import weak_evaluate, weak_loss
 from model.unet_parts import *
 from utils.loss.focal_loss import FocalLoss2
 
+
+class Up2(nn.Module):
+    """Upscaling then double conv"""
+
+    def __init__(self, in_channels, out_channels, bilinear=True):
+        super().__init__()
+
+        # if bilinear, use the normal convolutions to reduce the number of channels
+        if bilinear:
+            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+            self.conv = DoubleConv(in_channels, out_channels, in_channels // 2)
+        else:
+            self.up = nn.ConvTranspose2d(in_channels , in_channels // 2, kernel_size=2, stride=2)
+            self.conv = DoubleConv(in_channels, out_channels)
+
+
+    def forward(self, x1, x2):
+        x1 = self.up(x1)
+        # input is CHW
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
+
+        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
+                        diffY // 2, diffY - diffY // 2])
+        x = torch.cat([x2-x1, x1], dim=1)
+        return self.conv(x)
+
 class UNet(nn.Module):
     def __init__(self, n_channels, n_classes, bilinear=True):
         super(UNet, self).__init__()
@@ -26,10 +53,10 @@ class UNet(nn.Module):
         self.down3 = Down(256, 512)
         factor = 2 if bilinear else 1
         self.down4 = Down(512, 1024 // factor)
-        self.up1 = Up(1024, 512 // factor, bilinear)
-        self.up2 = Up(512, 256 // factor, bilinear)
-        self.up3 = Up(256, 128 // factor, bilinear)
-        self.up4 = Up(128, 64, bilinear)
+        self.up1 = Up2(1024, 512 // factor, bilinear)
+        self.up2 = Up2(512, 256 // factor, bilinear)
+        self.up3 = Up2(256, 128 // factor, bilinear)
+        self.up4 = Up2(128, 64, bilinear)
         self.outc = OutConv(64, n_classes)
 
     def forward(self, x):
@@ -62,13 +89,12 @@ class loss(weak_loss):
         return l, {self.name:l}
 
 class evaluate(weak_evaluate):
-    def __init__(self):
+    def __init__(self,ori):
         super(evaluate, self).__init__()
         self.cnt=0
         self.act = nn.Sigmoid()
 
     def get_eval(self, inputs, preds, targets):
-        iou_reverse=[]
         iou=[]
         for i in range(inputs.shape[0]):
             p=(self.act(preds[i,0])<0.5).float()
