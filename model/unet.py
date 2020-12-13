@@ -32,8 +32,7 @@ class UNet(nn.Module):
         self.up4 = Up(128, 64, bilinear)
         self.outc = OutConv(64, n_classes)
 
-    def forward(self, x):
-        # [1,   512, 512]
+    def forward(self, x):       # [1,   512, 512]
         x1 = self.inc(x)        # [64,  512, 512]
         x2 = self.down1(x1)     # [128, 256, 256]
         x3 = self.down2(x2)     # [256, 128, 128]
@@ -44,8 +43,6 @@ class UNet(nn.Module):
         x = self.up3(x, x2)     # [64,  256, 256]
         x = self.up4(x, x1)     # [64,  512, 512]
         logits = self.outc(x)   # [1,   512, 512]
-
-        
         return logits
 
 class loss(weak_loss):
@@ -70,13 +67,13 @@ class evaluate(weak_evaluate):
     def get_eval(self, inputs, preds, targets):
         iou_reverse=[]
         iou=[]
-        for i in range(inputs.shape[0]):
-            p=(self.act(preds[i,0])<0.5).float()
+        for k in range(inputs.shape[0]):
+            p=(self.act(preds[k,0])<0.5).float()
             t=1-targets
             u=(t+p)>=1
             i=t*p
             iou.append(i.sum()/u.sum())
-            pr=(self.act(preds[i,0])>=0.5).float()
+            pr=(self.act(preds[k,0])>=0.5).float()
             ur=(targets+pr)>=1
             ir=targets*pr
             iou_reverse.append(ir.sum()/ur.sum())
