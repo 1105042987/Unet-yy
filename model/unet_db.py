@@ -105,6 +105,58 @@ class db_enco(nn.Module):
         rebuild = self.unet_rebuild(logits)     # [1,   512, 512]
         return torch.cat([rebuild,logits],1)
 
+class db_enco_nomid(nn.Module):
+    def __init__(self, n_channels, n_classes, bilinear=True):
+        super(db_deco, self).__init__()
+        self.n_channels = n_channels
+        self.n_classes = n_classes
+        self.bilinear = bilinear
+
+        self.inc = DoubleConv(n_channels, 64)
+        self.down1 = Down(64, 128)
+        self.down2 = Down(128, 256)
+        self.down3 = Down(256, 512)
+        factor = 2 if bilinear else 1
+        self.down4 = Down(512, 1024 // factor)
+        self.up1 = Up(1024, 512 // factor, bilinear)
+        self.up2 = Up(512, 256 // factor, bilinear)
+        self.up3 = Up(256, 128 // factor, bilinear)
+        self.up4 = Up(128, 64, bilinear)
+        self.outc = OutConv(64, n_classes)
+
+        self.down21 = Down(64, 128)
+        self.down22 = Down(128, 256)
+        self.down23 = Down(256, 512)
+        self.down24 = Down(512, 1024 // factor)
+        self.up21 = Up(1024, 512 // factor, bilinear)
+        self.up22 = Up(512, 256 // factor, bilinear)
+        self.up23 = Up(256, 128 // factor, bilinear)
+        self.up24 = Up(128, 64, bilinear)
+        self.outc2 = OutConv(64, n_classes)
+
+    def forward(self, x):       # [1,   512, 512]
+        x1 = self.inc(x)        # [64,  512, 512]
+        x2 = self.down1(x1)     # [128, 256, 256]
+        x3 = self.down2(x2)     # [256, 128, 128]
+        x4 = self.down3(x3)     # [512, 64,  64]
+        x5 = self.down4(x4)     # [1024/512,32,  32]
+
+        x = self.up1(x5, x4)    # [256, 64,  64]
+        x = self.up2(x, x3)     # [128, 128, 128]
+        x = self.up3(x, x2)     # [64,  256, 256]
+        x = self.up4(x, x1)     # [64,  512, 512]
+        logits = self.outc(x)   # [1,   512, 512]
+
+        y2 = self.down21(x)
+        y3 = self.down22(x)
+        y4 = self.down23(x)
+        y5 = self.down24(x)
+        y = self.up21(y5, y4)    # [256, 64,  64]
+        y = self.up22(y, y3)     # [128, 128, 128]
+        y = self.up23(y, y2)     # [64,  256, 256]
+        y = self.up24(y, x)     # [64,  512, 512]
+        rebuild = self.outc2(y)  # [1,   512, 512]
+        return torch.cat([rebuild,logits],1)
 
 ################################################ NetWork End ############################################################
 

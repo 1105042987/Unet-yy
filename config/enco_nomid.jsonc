@@ -1,0 +1,51 @@
+{
+    "system": {
+        "net": ["unet_db","db_enco_nomid"],
+        "remark": "",
+        "time": null,
+        "gpu": [0],
+        "net_param":{
+            "n_channels":1,
+            "n_classes":1,
+            "bilinear":false
+        },
+        "loss_param":{
+            "wr": 1,
+            "wm": 1
+        },
+        "evaluate_param":{
+        }
+    },
+    "optimizer":{
+        "type": "adam",
+        "learning_rate": 1e-2,
+        "adam":{"weight_decay":1e-5},
+        "sgd":{"weight_decay": 1e-5,"moment":0.9},
+
+        "decay_rate": 0.1,
+        "milestones": [30,70],
+
+        "test_on_train": true,
+        "eval_on_train": true,
+        "max_epoch": 100,
+        "max_batch": null,
+        "save_epoch": 5
+    },
+    "dataset": {
+        "file_name": "ISBI_db",
+        "num_workers": 2,
+        "th":0.6,
+        "train":{
+            "direction": ["%DATA%","ISBI-2012-EM","new train set"],
+            "shuffle":true,
+            "repeat_time":20,
+            "batch_size": 2
+        },
+        "test": {
+            "direction": ["%DATA%","ISBI-2012-EM","new_test_set"],
+            "shuffle":false,
+            "repeat_time":1,
+            "batch_size": 1
+        }
+    }
+}
