@@ -71,8 +71,6 @@ class UNet(nn.Module):
         x = self.up3(x, x2)     # [64,  256, 256]
         x = self.up4(x, x1)     # [64,  512, 512]
         logits = self.outc(x)   # [1,   512, 512]
-
-        
         return logits
 
 class loss(weak_loss):

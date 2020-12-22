@@ -28,8 +28,8 @@ class Dataset(torch.utils.data.Dataset):
         targets=cv2.imread(PJ(self.labdir,self.namelist[idx]),0)
         crop=self.transforms(np.concatenate((inputs[...,np.newaxis],targets[...,np.newaxis]),axis=-1))
         inputs=crop[0:1]
-        crop[1:2]=(crop[1:2]<=self.th).float()
-        return inputs,crop
+        targets=(crop[1:2]<=self.th).float()
+        return inputs,(inputs,targets)
 
     def __len__(self):
         return self.size*self.repeat

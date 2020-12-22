@@ -1,6 +1,6 @@
 {
     "system": {
-        "net": ["unet_db","db_enco_nomid"],
+        "net": ["unet_db","db_enco_up4"],
         "remark": "",
         "time": null,
         "gpu": [0],
@@ -11,7 +11,7 @@
         },
         "loss_param":{
             "wr": 1,
-            "wm": 1
+            "wm": 10
         },
         "evaluate_param":{
         }

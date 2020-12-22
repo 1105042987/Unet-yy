@@ -44,7 +44,7 @@ class db_deco_easy(nn.Module):
         x = self.up3(x, x2)     # [64,  256, 256]
         x = self.up4(x, x1)     # [64,  512, 512]
         rebu_mask = self.outc(x)   # [1,   512, 512]
-        return rebu_mask
+        return (rebu_mask[:,0:1],rebu_mask[:,1:2])
 
 
 class db_deco(nn.Module):
@@ -90,7 +90,7 @@ class db_deco(nn.Module):
         y = self.up23(y, x2)     # [64,  256, 256]
         y = self.up24(y, x1)     # [64,  512, 512]
         rebuild = self.outc2(y)  # [1,   512, 512]
-        return torch.cat([rebuild,logits],1)
+        return (rebuild,logits)
 
 
 class db_enco(nn.Module):
@@ -103,11 +103,11 @@ class db_enco(nn.Module):
     def forward(self, x):
         logits = self.unet_mask(x)              # [1,   512, 512]
         rebuild = self.unet_rebuild(logits)     # [1,   512, 512]
-        return torch.cat([rebuild,logits],1)
+        return (rebuild,logits)
 
-class db_enco_nomid(nn.Module):
+class db_enco_up4(nn.Module):
     def __init__(self, n_channels, n_classes, bilinear=True):
-        super(db_deco, self).__init__()
+        super(db_enco_up4, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
@@ -148,15 +148,15 @@ class db_enco_nomid(nn.Module):
         logits = self.outc(x)   # [1,   512, 512]
 
         y2 = self.down21(x)
-        y3 = self.down22(x)
-        y4 = self.down23(x)
-        y5 = self.down24(x)
+        y3 = self.down22(y2)
+        y4 = self.down23(y3)
+        y5 = self.down24(y4)
         y = self.up21(y5, y4)    # [256, 64,  64]
         y = self.up22(y, y3)     # [128, 128, 128]
         y = self.up23(y, y2)     # [64,  256, 256]
         y = self.up24(y, x)     # [64,  512, 512]
         rebuild = self.outc2(y)  # [1,   512, 512]
-        return torch.cat([rebuild,logits],1)
+        return (rebuild,logits)
 
 ################################################ NetWork End ############################################################
 
@@ -169,8 +169,8 @@ class loss(weak_loss):
         self.loss_rebuild = nn.MSELoss()
         self.loss_mask = nn.BCEWithLogitsLoss()
     def get_loss(self, pre, tar):
-        lrebuild=self.loss_rebuild(pre[:,0],tar[:,0])
-        lmask=self.loss_mask(pre[:,1],tar[:,1])
+        lrebuild=self.loss_rebuild(pre[0],tar[0])
+        lmask=self.loss_mask(pre[1],tar[1])
         l = self.wr*lrebuild+self.wm*lmask
         return l, {'mask':lmask,'rebuild':lrebuild}
 
@@ -183,13 +183,15 @@ class evaluate(weak_evaluate):
     def get_eval(self, inputs, preds, targets):
         iou_reverse=[]
         iou=[]
+        targets=targets[1]
+        preds=preds[1]
         for k in range(inputs.shape[0]):
-            p=(self.act(preds[k,1])<0.5).float()
+            p=(self.act(preds[k])<0.5).float()
             t=1-targets
             u=(t+p)>=1
             i=t*p
             iou.append(i.sum()/u.sum())
-            pr=(self.act(preds[k,1])>=0.5).float()
+            pr=1-p
             ur=(targets+pr)>=1
             ir=targets*pr
             iou_reverse.append(ir.sum()/ur.sum())

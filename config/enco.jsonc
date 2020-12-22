@@ -11,7 +11,7 @@
         },
         "loss_param":{
             "wr": 1,
-            "wm": 1
+            "wm": 10
         },
         "evaluate_param":{
         }
