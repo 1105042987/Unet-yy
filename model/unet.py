@@ -67,6 +67,7 @@ class evaluate(weak_evaluate):
     def get_eval(self, inputs, preds, targets):
         iou_reverse=[]
         iou=[]
+        metric=[]
         for k in range(inputs.shape[0]):
             p=(self.act(preds[k,0])<0.5).float()
             t=1-targets
@@ -77,7 +78,14 @@ class evaluate(weak_evaluate):
             ur=(targets+pr)>=1
             ir=targets*pr
             iou_reverse.append(ir.sum()/ur.sum())
-        return {'iou':np.array(iou),'iou_reverse':np.array(iou_reverse)}
+            metric.append([
+                (t*p).sum()/t.sum(),            # tp
+                ((1-t)*(1-p)).sum()/(1-t).sum(),    # tn        
+                (t*(1-p)).sum()/t.sum(),        # fp    
+                ((1-t)*p).sum()/(1-t).sum(),       # fn    
+            ])
+        metric=np.array(metric)
+        return {'iou':np.array(iou),'iou_reverse':np.array(iou_reverse),'tp':metric[:,0],'tn':metric[:,1],'fp':metric[:,2],'fn':metric[:,3]}
 
     def visualize(self, inputs, preds, targets, _eval):
         for i in range(inputs.shape[0]):
@@ -86,11 +94,23 @@ class evaluate(weak_evaluate):
             if k=='q':break
         return k
 
+    def cat_save(self,name,*subim):
+        for_save = (torch.cat(subim,1).cpu().detach().numpy()*255).astype(np.uint8)
+        cv2.imwrite(os.path.join(self.result_dir,'{}_{}.jpg'.format(name,self.cnt)),for_save)
+
     def save(self, inputs, preds, targets, _eval):
         for i in range(inputs.shape[0]):
+            p,t=(preds[i,0]>0).float(),targets[i,0]
+            tp=(t*p).bool()
+            fp=(t*(1-p)).bool()
+            fn=((1-t)*p).bool()
+            t3=t.unsqueeze(2).repeat(1,1,3)
+            im=torch.zeros_like(t3)
+            im[tp,:]=1
+            im[...,2][fp]=1
+            im[...,1][fn]=1
+            self.cat_save('mask',inputs[i,0].unsqueeze(2).repeat(1,1,3),im,t3)
             self.cnt+=1
-            im=(torch.cat([inputs[i,0],(self.act(preds[i,0])>0.5).float(),targets[i,0]],-1).cpu().detach().numpy()*255).astype(np.uint8)
-            cv2.imwrite(os.path.join(self.result_dir,'{}.png'.format(self.cnt)),im)
 
 if __name__ == "__main__":
     n=UNet(1,1)

@@ -154,7 +154,7 @@ class db_enco_up4(nn.Module):
         y = self.up21(y5, y4)    # [256, 64,  64]
         y = self.up22(y, y3)     # [128, 128, 128]
         y = self.up23(y, y2)     # [64,  256, 256]
-        y = self.up24(y, x)     # [64,  512, 512]
+        y = self.up24(y, x)      # [64,  512, 512]
         rebuild = self.outc2(y)  # [1,   512, 512]
         return (rebuild,logits)
 
@@ -167,7 +167,8 @@ class loss(weak_loss):
         self.wr=wr
         self.wm=wm
         self.loss_rebuild = nn.MSELoss()
-        self.loss_mask = nn.BCEWithLogitsLoss()
+        # self.loss_mask = nn.BCEWithLogitsLoss()
+        self.loss_mask = FocalLoss2(use_logits=True)
     def get_loss(self, pre, tar):
         lrebuild=self.loss_rebuild(pre[0],tar[0])
         lmask=self.loss_mask(pre[1],tar[1])
@@ -183,6 +184,7 @@ class evaluate(weak_evaluate):
     def get_eval(self, inputs, preds, targets):
         iou_reverse=[]
         iou=[]
+        metric=[]
         targets=targets[1]
         preds=preds[1]
         for k in range(inputs.shape[0]):
@@ -195,20 +197,40 @@ class evaluate(weak_evaluate):
             ur=(targets+pr)>=1
             ir=targets*pr
             iou_reverse.append(ir.sum()/ur.sum())
-        return {'iou':np.array(iou),'iou_reverse':np.array(iou_reverse)}
+            metric.append([
+                (t*p).sum()/t.sum(),            # tp
+                ((1-t)*(1-p)).sum()/(1-t).sum(),    # tn        
+                (t*(1-p)).sum()/t.sum(),        # fp    
+                ((1-t)*p).sum()/(1-t).sum(),       # fn    
+            ])
+        metric=np.array(metric)
+        return {'iou':np.array(iou),'iou_reverse':np.array(iou_reverse),'tp':metric[:,0],'tn':metric[:,1],'fp':metric[:,2],'fn':metric[:,3]}
 
     def visualize(self, inputs, preds, targets, _eval):
         for i in range(inputs.shape[0]):
-            cv2.imshow('t',torch.cat([inputs[i,0],(self.act(preds[i,0])>0.5).float(),targets[i,0]],-1).cpu().detach().numpy())
+            cv2.imshow('t',torch.cat([inputs[i,0],(self.act(preds[i,0])>0.5).float(),targets[i,0]],1).cpu().detach().numpy())
             k=cv2.waitKey(0)
             if k=='q':break
         return k
 
+    def cat_save(self,name,*subim):
+        for_save = (torch.cat(subim,1).cpu().detach().numpy()*255).astype(np.uint8)
+        cv2.imwrite(os.path.join(self.result_dir,'{}_{}.png'.format(name,self.cnt)),for_save)
+
     def save(self, inputs, preds, targets, _eval):
         for i in range(inputs.shape[0]):
+            self.cat_save('rebuild',preds[0][i,0],targets[0][i,0])
+            p,t=(preds[1][i,0]>0).float(),targets[1][i,0]
+            tp=(t*p).bool()
+            fp=(t*(1-p)).bool()
+            fn=((1-t)*p).bool()
+            t3=t.unsqueeze(2).repeat(1,1,3)
+            im=torch.zeros_like(t3)
+            im[tp,:]=1
+            im[...,2][fp]=1
+            im[...,1][fn]=1
+            self.cat_save('mask',im,t3)
             self.cnt+=1
-            im=(torch.cat([inputs[i,0],(self.act(preds[i,0])>0.5).float(),targets[i,0]],-1).cpu().detach().numpy()*255).astype(np.uint8)
-            cv2.imwrite(os.path.join(self.result_dir,'{}.png'.format(self.cnt)),im)
 
 if __name__ == "__main__":
     n=UNet(1,1)
